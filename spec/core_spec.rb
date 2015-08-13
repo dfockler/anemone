@@ -1,6 +1,6 @@
 $:.unshift(File.dirname(__FILE__))
 require 'spec_helper'
-%w[pstore tokyo_cabinet sqlite3].each { |file| require "anemone/storage/#{file}.rb" }
+%w[pstore sqlite3].each { |file| require "anemone/storage/#{file}.rb" }
 
 module Anemone
   describe Core do
@@ -17,7 +17,7 @@ module Anemone
         pages << FakePage.new('2')
         pages << FakePage.new('3')
 
-        Anemone.crawl(pages[0].url, @opts).should have(4).pages
+        Anemone.crawl(pages[0].url, @opts).pages.size.should eq(4)
       end
 
       it "should not follow links that leave the original domain" do
@@ -27,7 +27,7 @@ module Anemone
 
         core = Anemone.crawl(pages[0].url, @opts)
 
-        core.should have(2).pages
+        core.pages.size.should eq(2)
         core.pages.keys.should_not include('http://www.other.com/')
       end
 
@@ -38,7 +38,7 @@ module Anemone
 
         core = Anemone.crawl(pages[0].url, @opts)
 
-        core.should have(2).pages
+        core.pages.size.should eq(2)
         core.pages.keys.should_not include('http://www.other.com/')
       end
 
@@ -48,7 +48,7 @@ module Anemone
         pages << FakePage.new('1', :redirect => '2')
         pages << FakePage.new('2')
 
-        Anemone.crawl(pages[0].url, @opts).should have(3).pages
+        Anemone.crawl(pages[0].url, @opts).pages.size.should eq(3)
       end
 
       it "should follow with HTTP basic authentication" do
@@ -56,7 +56,7 @@ module Anemone
         pages << FakePage.new('0', :links => ['1', '2'], :auth => true)
         pages << FakePage.new('1', :links => ['3'], :auth => true)
 
-        Anemone.crawl(pages.first.auth_url, @opts).should have(3).pages
+        Anemone.crawl(pages.first.auth_url, @opts).pages.size.should eq(3)
       end
 
       it "should accept multiple starting URLs" do
@@ -66,7 +66,7 @@ module Anemone
         pages << FakePage.new('2', :links => ['3'])
         pages << FakePage.new('3')
 
-        Anemone.crawl([pages[0].url, pages[2].url], @opts).should have(4).pages
+        Anemone.crawl([pages[0].url, pages[2].url], @opts).pages.size.should eq(4)
       end
 
       it "should include the query string when following links" do
@@ -77,7 +77,7 @@ module Anemone
 
         core = Anemone.crawl(pages[0].url, @opts)
 
-        core.should have(2).pages
+        core.pages.size.should eq(2)
         core.pages.keys.should_not include(pages[2].url)
       end
 
@@ -91,7 +91,7 @@ module Anemone
           a.skip_query_strings = true
         end
         
-        core.should have(2).pages
+        core.pages.size.should eq(2)
       end
 
       it "should be able to skip links based on a RegEx" do
@@ -105,7 +105,7 @@ module Anemone
           a.skip_links_like /1/, /3/
         end
 
-        core.should have(2).pages
+        core.pages.size.should eq(2)
         core.pages.keys.should_not include(pages[1].url)
         core.pages.keys.should_not include(pages[3].url)
       end
@@ -143,7 +143,7 @@ module Anemone
           a.focus_crawl {|p| p.links.reject{|l| l.to_s =~ /1/}}
         end
 
-        core.should have(2).pages
+        core.pages.size.should eq(2)
         core.pages.keys.should_not include(pages[1].url)
       end
 
@@ -188,7 +188,7 @@ module Anemone
         core = Anemone.crawl(FakePage.new('0').url) do |anemone|
           anemone.threads = 4
           anemone.on_every_page do
-            lambda {anemone.threads = 2}.should raise_error
+            lambda {anemone.threads = 2}.should raise_error(RuntimeError)
           end
         end
         core.opts[:threads].should == 4
@@ -225,7 +225,7 @@ module Anemone
 
         it "should optionally limit the depth of the crawl" do
           core = Anemone.crawl(@pages[0].url, @opts.merge({:depth_limit => 3}))
-          core.should have(4).pages
+          core.pages.size.should eq(4)
         end
       end
 
@@ -256,26 +256,26 @@ module Anemone
       end
     end
 
-    describe Storage::TokyoCabinet do
-      it_should_behave_like "crawl"
+    # describe Storage::TokyoCabinet do
+    #   it_should_behave_like "crawl"
 
-      before(:all) do
-        @test_file = 'test.tch'
-      end
+    #   before(:all) do
+    #     @test_file = 'test.tch'
+    #   end
 
-      before(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-        @opts = {:storage => @store = Storage.TokyoCabinet(@test_file)}
-      end
+    #   before(:each) do
+    #     File.delete(@test_file) if File.exists?(@test_file)
+    #     @opts = {:storage => @store = Storage.TokyoCabinet(@test_file)}
+    #   end
 
-      after(:each) do
-        @store.close
-      end
+    #   after(:each) do
+    #     @store.close
+    #   end
 
-      after(:each) do
-        File.delete(@test_file) if File.exists?(@test_file)
-      end
-    end
+    #   after(:each) do
+    #     File.delete(@test_file) if File.exists?(@test_file)
+    #   end
+    # end
 
     describe Storage::SQLite3 do
       it_should_behave_like "crawl"
